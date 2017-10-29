@@ -12,6 +12,7 @@ from ghpu import GitHubPluginUpdater
 
 from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
 from urlparse import urlparse, parse_qs
+from rest.rest import RestHandler
 
 # taken from http://www.piware.de/2011/01/creating-an-https-server-in-python/
 # generate server.xml with the following command:
@@ -37,64 +38,80 @@ def updateVar(name, value, folder):
 
 ########################################
 class MyHTTPServer(HTTPServer):
+    def __init__(self, listen, handler):
+        HTTPServer.__init__(self, listen, handler)
+        logging.getLogger("Plugin.HttpServer").debug("Starting custom HTTP server on %s with %s", listen, handler)
+        self.authKey = ""
 
     def setKey(self, authKey):
         self.authKey = authKey
 
-
 class AuthHandler(BaseHTTPRequestHandler):
+    def __init__(self, request, client_address, server):
+        self.logger = logging.getLogger("Plugin.AuthHandler")
+        self.rest_handler = RestHandler()
+        BaseHTTPRequestHandler.__init__(self, request, client_address, server)
 
     def do_POST(self):
-        self.logger = logging.getLogger("Plugin.AuthHandler")
         client_host, client_port = self.client_address
-        self.logger.debug("AuthHandler: POST from %s:%s to %s" % (str(client_host), str(client_port), self.path))
-
+        self.logger.debug("AuthHandler: POST from %s:%s to %s", str(client_host), str(client_port), self.path)
         self.send_response(200)
         self.send_header("Content-type", "text/html")
         self.end_headers()
-
 
     def do_GET(self):
-        self.logger = logging.getLogger("Plugin.AuthHandler")
         client_host, client_port = self.client_address
-        self.logger.debug("AuthHandler: GET from %s:%s for %s" % (str(client_host), str(client_port), self.path))
-
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
+        self.logger.debug("AuthHandler: GET from %s:%s for %s", str(client_host), str(client_port), self.path)
 
         auth_header = self.headers.getheader('Authorization')
 
-        if auth_header == None:
+        if auth_header is None:
+            self.send_response(401)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
             self.logger.debug("AuthHandler: Request has no Authorization header")
             self.wfile.write("<html>\n<head><title>Indigo HTTPd Plugin</title></head>\n<body>")
             self.wfile.write("\n<p>Basic Authentication Required</p>")
             self.wfile.write("\n</body>\n</html>\n")
-
         elif auth_header == ('Basic ' + self.server.authKey):
-            self.logger.debug(u"AuthHandler: Request has correct Authorization header")
-            self.wfile.write("<html>\n<head><title>Indigo HTTPd Plugin</title></head>\n<body>")
-            request = urlparse(self.path)
-
-            if request.path == "/setvar":
-                query = parse_qs(request.query)
-                for key in query:
-                    self.logger.debug(u"AuthHandler: setting variable httpd_%s to %s" % (key, query[key][0]))
-                    updateVar("httpd_"+key, query[key][0], indigo.activePlugin.pluginPrefs["folderId"])
-                    self.wfile.write("\n<p>Updated variable %s</p>" % key)
-
-                indigo.activePlugin.triggerCheck()
-
-            else:
-                self.logger.debug(u"AuthHandler: Unknown request: %s" % self.request)
-
-            self.wfile.write("\n</body>\n</html>\n")
-
+            self.logger.debug("AuthHandler: handling request to %s", self.path)
+            handled = None
+            try:
+                handled = self.rest_handler.process_get(self)
+            except Exception as e:
+                self.logger.debug("Exception in route handling %s", e)
+            self.logger.debug("Handled was %s", handled)
+            if handled is None:
+                self.logger.debug('Route not handled, falling back to setvar')
+                self.handle_setvar()
         else:
+            self.send_response(401)
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
             self.logger.debug(u"AuthHandler: Request with invalid Authorization header")
             self.wfile.write("<html>\n<head><title>Indigo HTTPd Plugin</title></head>\n<body>")
             self.wfile.write("\n<p>Invalid Authentication</p>")
             self.wfile.write("\n</body>\n</html>\n")
+
+    def handle_setvar(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
+        self.end_headers()
+        self.logger.debug(u"AuthHandler: Request has correct Authorization header")
+        self.wfile.write("<html>\n<head><title>Indigo HTTPd Plugin</title></head>\n<body>")
+        request = urlparse(self.path)
+
+        if request.path == "/setvar":
+            query = parse_qs(request.query)
+            for key in query:
+                self.logger.debug(u"AuthHandler: setting variable httpd_%s to %s", key, query[key][0])
+                updateVar("httpd_"+key, query[key][0], indigo.activePlugin.pluginPrefs["folderId"])
+                self.wfile.write("\n<p>Updated variable %s</p>" % key)
+            indigo.activePlugin.triggerCheck()
+
+        else:
+            self.logger.debug(u"AuthHandler: Unknown request: %s", self.path)
+        self.wfile.write("\n</body>\n</html>\n")
 
 
 
@@ -158,7 +175,6 @@ class Plugin(indigo.PluginBase):
 
         try:
             while True:
-
                 self.httpd.handle_request()
 
                 if (self.updateFrequency > 0.0) and (time.time() > self.next_update_check):
