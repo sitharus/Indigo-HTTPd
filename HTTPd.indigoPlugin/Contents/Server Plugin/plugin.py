@@ -7,6 +7,7 @@ import time
 import os
 import base64
 import logging
+import indigo
 
 from ghpu import GitHubPluginUpdater
 
@@ -55,9 +56,16 @@ class AuthHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         client_host, client_port = self.client_address
         self.logger.debug("AuthHandler: POST from %s:%s to %s", str(client_host), str(client_port), self.path)
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
+
+        auth_header = self.headers.getheader('Authorization')
+        if auth_header == ('Basic ' + self.server.authKey):
+            self.logger.debug("AuthHandler: handling request to %s", self.path)
+            self.rest_handler.process_post(self)
+        else:
+            self.send_response(404)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write("URL not found\n")
 
     def do_GET(self):
         client_host, client_port = self.client_address
