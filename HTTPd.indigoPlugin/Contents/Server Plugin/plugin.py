@@ -39,10 +39,11 @@ def updateVar(name, value, folder):
 
 ########################################
 class MyHTTPServer(HTTPServer):
-    def __init__(self, listen, handler):
+    def __init__(self, listen, handler, plugin_prefs):
         HTTPServer.__init__(self, listen, handler)
         logging.getLogger("Plugin.HttpServer").debug("Starting custom HTTP server on %s with %s", listen, handler)
         self.authKey = ""
+        self.plugin_prefs = plugin_prefs
 
     def setKey(self, authKey):
         self.authKey = authKey
@@ -179,7 +180,7 @@ class Plugin(indigo.PluginBase):
 
         self.logger.debug(u"Starting HTTP server on port %d" % self.port)
         try:
-            self.httpd = MyHTTPServer(("", self.port), AuthHandler)
+            self.httpd = MyHTTPServer(("", self.port), AuthHandler, self.pluginPrefs)
         except:
             self.logger.error(u"Unable to open port %d for HHTTP Server" % self.port)
             self.httpd = None

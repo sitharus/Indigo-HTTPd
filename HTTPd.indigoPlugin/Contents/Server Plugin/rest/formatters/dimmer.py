@@ -4,7 +4,7 @@ import indigo
 import colorsys
 
 class Dimmer(Formatter):
-    def can_format(self, device):
+    def can_format(self, device, prefs):
         return isinstance(device, indigo.DimmerDevice)
 
     def to_dictionary(self, device):

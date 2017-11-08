@@ -8,7 +8,8 @@ class Devices(RouteHandler):
         super(Devices, self).__init__('/devices')
 
     def handle_get(self, http_handler, route_matches):
-        device_descriptions = [format_device(d) for d in indigo.devices]
+        prefs = http_handler.server.plugin_prefs
+        device_descriptions = [format_device(d, prefs) for d in indigo.devices]
 
         http_handler.send_response(200)
         http_handler.send_header("Content-type", "application/json")

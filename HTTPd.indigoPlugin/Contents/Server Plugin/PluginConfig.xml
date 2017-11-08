@@ -17,6 +17,10 @@
 	<Field id="messageNote" type="label" fontSize="small" fontColor="darkgray">
 		<Label>The plugin will not check for updates if the frequency is set to zero.</Label>
 	</Field>
+	<Field id="sep1" type="separator" />
+	<Field id="lightSwitchIds" type="textfield">
+		<Label>IDs of switches that control lights to expose to Homebridge</Label>
+	</Field>
     <Field id="sep2" type="separator"/>
     <Field id="logLevel" type="menu" defaultValue="20">
         <Label>Event Logging Level:</Label>

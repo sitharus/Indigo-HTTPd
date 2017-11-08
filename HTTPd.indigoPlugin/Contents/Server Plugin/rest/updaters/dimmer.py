@@ -3,7 +3,7 @@ import indigo
 import colorsys
 
 class Dimmer(object):
-    def can_handle(self, device):
+    def can_handle(self, device, prefs):
         return isinstance(device, indigo.DimmerDevice)
 
     def update(self, device, actions):
