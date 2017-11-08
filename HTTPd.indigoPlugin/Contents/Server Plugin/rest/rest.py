@@ -27,6 +27,16 @@ class RestHandler(object):
         except Exception as e:
             self.logger.debug("Caught exception searching for routes %s", e)
             return None
+
+    def process_put(self, http_handler):
+        try:
+            handler, match = self.find_handler(http_handler)
+            self.logger.debug("Handling put with %s, matches %s", handler, match)
+            if handler is not None:
+                return handler.handle_put(http_handler, match)
+        except Exception as e:
+            self.logger.debug("Caught exception searching for routes %s", e)
+            return None
     
     def find_handler(self, http_handler):
         request_url = urlparse(http_handler.path)

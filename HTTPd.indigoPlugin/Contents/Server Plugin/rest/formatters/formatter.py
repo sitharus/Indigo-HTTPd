@@ -3,4 +3,8 @@ class Formatter(object):
         return False
 
     def to_dictionary(self, device):
-        return {'name': device.name, 'id': device.id, 'description': device.description}
+        return {'name': device.name,
+                'id': device.id,
+                'description': device.description,
+                'href': '/devices/%s' % device.id,
+                'type': 'generic'}

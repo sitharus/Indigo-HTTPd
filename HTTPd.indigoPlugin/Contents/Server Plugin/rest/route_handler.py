@@ -12,3 +12,6 @@ class RouteHandler(object):
 
     def handle_post(self, http_handler, route_matches):
         return None
+
+    def handle_put(self, http_handler, route_matches):
+        return None

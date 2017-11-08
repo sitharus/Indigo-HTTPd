@@ -67,6 +67,20 @@ class AuthHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write("URL not found\n")
 
+    def do_PUT(self):
+        client_host, client_port = self.client_address
+        self.logger.debug("AuthHandler: PUT from %s:%s to %s", str(client_host), str(client_port), self.path)
+
+        auth_header = self.headers.getheader('Authorization')
+        if auth_header == ('Basic ' + self.server.authKey):
+            self.logger.debug("AuthHandler: handling request to %s", self.path)
+            self.rest_handler.process_put(self)
+        else:
+            self.send_response(404)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write("URL not found\n")
+
     def do_GET(self):
         client_host, client_port = self.client_address
         self.logger.debug("AuthHandler: GET from %s:%s for %s", str(client_host), str(client_port), self.path)
